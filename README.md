@@ -1,24 +1,12 @@
-# app
+# 3Dモデル表示アプリ（導入編）
+Three.jsを使って3Dモデルを表示するWebアプリです。フレームワークはVue3 Typescriptです。
 
-## Project setup
+## セットアップ
 ```
+git clone https://github.com/mininjin/display-3d-models.git
+cd display-3d-models
 npm install
-```
-
-### Compiles and hot-reloads for development
-```
 npm run serve
 ```
 
-### Compiles and minifies for production
-```
-npm run build
-```
-
-### Lints and fixes files
-```
-npm run lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+`localhost:8080`にサーバーが立ちます。
