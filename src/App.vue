@@ -1,5 +1,5 @@
 <template>
-  <three />
+  <Three />
 </template>
 
 <script lang="ts">
