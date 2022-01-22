@@ -1,4 +1,4 @@
-# app
+# display-3d-models
 
 ## Project setup
 ```
