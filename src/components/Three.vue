@@ -1,19 +1,39 @@
 <template>
-  <div ref="container" class="fixed w-full h-full top-0 left-0"></div>
+  <div ref="container" class="fixed w-full h-full top-0 left-0">
+    <div
+      class="
+        absolute
+        top-0
+        right-0
+        bg-blue-900 bg-opacity-80
+        text-white
+        p-5
+        py-6
+      "
+    >
+      <label
+        for="file"
+        class="p-3 cursor-pointer border-2 rounded-lg border-white bg-blue-400"
+        >ファイルを選択してください</label
+      >
+      <input type="file" id="file" class="hidden" @input="onFileInput" />
+    </div>
+  </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, onMounted, ref } from "vue";
 import {
+  Color,
+  FileLoader,
   GridHelper,
-  Mesh,
-  MeshLambertMaterial,
   PerspectiveCamera,
   PointLight,
   Scene,
-  SphereGeometry,
   WebGLRenderer,
 } from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import loader from "@/lib/FileLoader";
 
 export default defineComponent({
   setup() {
@@ -24,20 +44,19 @@ export default defineComponent({
     const camera = new PerspectiveCamera();
     const renderer = new WebGLRenderer();
     const light = new PointLight();
+    const controls = new OrbitControls(camera, renderer.domElement);
     // 初期化
     const init = () => {
       if (container.value instanceof HTMLElement) {
         // DOMのサイズを取得
         const { clientWidth, clientHeight } = container.value;
         // 背景のグリッドの追加
-        scene.add(new GridHelper());
+        scene.add(new GridHelper(50));
+        scene.background = new Color(0xcccccc);
         // ライトの設定
         light.color.setHex(0xffffff);
         light.position.set(10, 10, 0);
         scene.add(light);
-        // 球体の追加
-        const sphere = createSphere();
-        scene.add(sphere);
         // カメラの設定
         camera.aspect = clientWidth / clientHeight;
         camera.updateProjectionMatrix();
@@ -53,15 +72,11 @@ export default defineComponent({
     };
     // 描画
     const animate = () => {
-      // カメラの位置パラメータ
-      let phi = 0;
       const frame = () => {
+        // カメラの視点変更
+        controls.update();
         // 描画
         renderer.render(scene, camera);
-        // カメラの視点変更
-        phi += 0.002 * Math.PI;
-        camera.position.set(10 * Math.cos(phi), 10, 10 * Math.sin(phi));
-        camera.lookAt(0, 0, 0);
         // 画面を更新
         requestAnimationFrame(frame);
       };
@@ -73,15 +88,22 @@ export default defineComponent({
       init();
     });
 
-    // Sphereの作成
-    const createSphere = (): Mesh => {
-      const geometry = new SphereGeometry(3, 100, 100);
-      const material = new MeshLambertMaterial();
-      return new Mesh(geometry, material);
+    // ファイル入力時のハンドラー
+    const onFileInput = async ({ target }: Event) => {
+      if (target instanceof HTMLInputElement && target.files) {
+        // ファイル入力
+        const file = target.files[0];
+        const group = await loader(file);
+        if (group) {
+          // Sceneに追加
+          scene.add(group);
+        }
+      }
     };
 
     return {
       container,
+      onFileInput,
     };
   },
 });

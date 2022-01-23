@@ -10,3 +10,10 @@ npm run serve
 ```
 
 `localhost:8080`にサーバーが立ちます。
+
+## 対応ファイル形式
+
+- FBX(.fbx)
+- Collada(.dae)
+- Wavefront(.obj)
+- glTF2.0(.glb, .gltf)
