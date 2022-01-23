@@ -25,7 +25,6 @@
 import { defineComponent, onMounted, ref } from "vue";
 import {
   Color,
-  FileLoader,
   GridHelper,
   PerspectiveCamera,
   PointLight,
