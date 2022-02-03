@@ -17,7 +17,12 @@
         class="p-3 cursor-pointer border-2 rounded-lg border-white bg-blue-400"
         >ファイルを選択してください</label
       >
-      <input type="file" id="file" class="hidden" @input="onFileInput" />
+      <input
+        type="file"
+        id="file"
+        class="hidden"
+        @input="onFileInput($event, scene)"
+      />
     </div>
   </div>
 </template>
@@ -34,16 +39,13 @@ import {
   PerspectiveCamera,
   PointLight,
   Scene,
-  SphereGeometry,
   Vector3,
   WebGLRenderer,
   AnimationClip,
-  MeshLambertMaterial,
   Clock,
   LoopOnce,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import loader from "@/lib/FileLoader";
 import {
   GRID_SIZE,
   BG_COLOR,
@@ -52,10 +54,9 @@ import {
   INITIAL_CAMERA_POSITION,
   INITIAL_CAMERA_LOOK,
   AMBIENT_LIGHT_COLOR,
-  SPHERE_RADIUS,
-  SPHERE_SEGMENTS,
   ANIMATION_DURATION,
 } from "@/lib/constants";
+import { onContextMenu, onFileInput } from "@/lib/handlers";
 
 export default defineComponent({
   setup() {
@@ -101,7 +102,15 @@ export default defineComponent({
         // OrbitControlsの右クリックイベントリスナーを無効化
         controls.enablePan = false;
         // イベントハンドラーの設定
-        container.value.addEventListener("contextmenu", onContextMenu);
+        container.value.addEventListener(
+          "contextmenu",
+          onContextMenu.bind({
+            container: container.value,
+            scene,
+            camera,
+            callback: moveObject,
+          })
+        );
         // 描画
         animate();
       }
@@ -127,70 +136,8 @@ export default defineComponent({
       init();
     });
 
-    // Sphereの作成
-    const createSphere = (): Mesh => {
-      const geometry = new SphereGeometry(
-        SPHERE_RADIUS,
-        SPHERE_SEGMENTS.width,
-        SPHERE_SEGMENTS.height
-      );
-      const material = new MeshLambertMaterial();
-      return new Mesh(geometry, material);
-    };
-
-    // ファイル入力時のハンドラー
-    const onFileInput = async ({ target }: Event) => {
-      if (target instanceof HTMLInputElement && target.files) {
-        // ファイル入力
-        const file = target.files[0];
-        const group = await loader(file);
-        if (group) {
-          // Sceneに追加
-          scene.add(group);
-        }
-      }
-    };
-
-    // 右クリック時のハンドラー
-    const onContextMenu = ({ clientX, clientY }: MouseEvent) => {
-      if (container.value instanceof HTMLElement) {
-        // 画面平面内の位置座標を取得
-        const { clientWidth, clientHeight } = container.value;
-        const relativeX = (clientWidth / 2 - clientX) / clientWidth;
-        const relativeY = (clientHeight / 2 - clientY) / clientHeight;
-        // 投げつけるオブジェクトを生成
-        const ball = createSphere();
-        scene.add(ball);
-        // オブジェクトを初期位置に配置
-        setObjectInitialPosition(ball.position, { relativeX, relativeY });
-        // アニメーションを作成して起動
-        moveObject(ball);
-      }
-    };
-
-    // 投げつけるオブジェクトの初期値を設定
-    const setObjectInitialPosition = (
-      position: Vector3,
-      { relativeX, relativeY }: { relativeX: number; relativeY: number }
-    ) => {
-      // カメラが向く方向ベクトルを取得
-      const forward = new Vector3();
-      camera.getWorldDirection(forward);
-      forward.normalize();
-      // カメラからの相対方向ベクトルを取得
-      const { up } = camera; // カメラから見て上方向
-      const left = up.clone().cross(forward); // カメラから見て左方向
-      // 目的の位置へのカメラからの相対位置を計算
-      left.multiplyScalar(relativeX * camera.getFilmWidth()); // 画面左方向
-      const top = up.clone().multiplyScalar(relativeY * camera.getFilmHeight()); // 画面上方向
-      forward // 画面正面方向
-        .multiplyScalar(camera.near); // カメラの視錐台まで前進させる
-      // 位置を設定
-      position.copy(camera.position).add(left).add(top).add(forward);
-    };
-
     // アニメーションの作成と起動
-    const moveObject = (object: Mesh) => {
+    const moveObject = (object: Mesh): void => {
       // アニメーションの始点と終点を計算
       const startPosition = object.position; // 始点
       const { x, y, z } = startPosition;
@@ -226,6 +173,7 @@ export default defineComponent({
 
     return {
       container,
+      scene,
       onFileInput,
     };
   },
