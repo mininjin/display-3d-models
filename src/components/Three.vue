@@ -21,7 +21,7 @@
         type="file"
         id="file"
         class="hidden"
-        @input="onFileInput($event, scene)"
+        @input="onFileInput($event, scene, objects)"
       />
     </div>
   </div>
@@ -46,7 +46,6 @@ import {
   LoopOnce,
   Raycaster,
   Object3D,
-  Intersection,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import {
@@ -72,7 +71,6 @@ export default defineComponent({
     const light = new PointLight();
     const ambientLight = new AmbientLight(AMBIENT_LIGHT_COLOR);
     const controls = new OrbitControls(camera, renderer.domElement);
-    const raycaster = new Raycaster();
     const objects: Object3D[] = [];
     // 初期化
     const init = () => {
@@ -156,7 +154,7 @@ export default defineComponent({
       init();
     });
 
-    //
+    // Keyframeの作成
     const getPositionKeyframe = (
       startPosition: Vector3,
       endPosition: Vector3,
@@ -167,31 +165,33 @@ export default defineComponent({
       // 初期位置
       const { x, y, z } = startPosition;
       const values = [x, y, z];
-      // Raycasterの設定
-      raycaster.set(startPosition, endPosition);
-      const intersects = raycaster.intersectObjects(objects, false);
+      // 始点と終点から方向ベクトルを算出
+      const direction = endPosition
+        .clone()
+        .add(startPosition.clone().multiplyScalar(-1))
+        .normalize();
+      // Raycasterの生成
+      const raycaster = new Raycaster();
+      raycaster.set(startPosition, direction);
+      // Raycasterとオブジェクトの交点を探す
+      const intersects = raycaster.intersectObjects(objects, true);
       if (intersects.length > 0) {
-        //
+        // 初期位置からの距離から交点位置を計算
         const intersect = intersects[0];
-        //
         const { distance } = intersect;
-        const rate = distance / startPosition.distanceTo(endPosition);
-        times.push(duration * rate);
         const intersectPosition = startPosition
           .clone()
-          .add(
-            endPosition
-              .clone()
-              .add(startPosition.clone().multiplyScalar(-1))
-              .multiplyScalar(rate)
-          );
-        //
+          .add(direction.multiplyScalar(distance));
+        // 位置を設定
         const { x, y, z } = intersectPosition;
-        values.splice(values.length - 1, 0, x, y, z, x, y, z);
+        values.splice(values.length, 0, x, y, z, x, y, z);
+        // スケジュールを追加
+        const rate = distance / startPosition.distanceTo(endPosition);
+        times.push(duration * rate);
       } else {
-        //
+        // 交点がなかった場合は直進
         const { x, y, z } = endPosition;
-        values.splice(values.length - 1, 0, x, y, z);
+        values.splice(values.length, 0, x, y, z);
       }
       // 終了時刻を設定
       times.push(duration);
@@ -204,14 +204,14 @@ export default defineComponent({
       const startPosition = object.position; // 始点
       const endPosition = new Vector3(); // 終点
       camera.getWorldDirection(endPosition);
-      endPosition.multiplyScalar(camera.far).add(startPosition); // カメラの向く方向にカメラの描画距離だけ増加
+      // カメラの向く方向にカメラの描画距離だけ増加
+      endPosition.multiplyScalar(camera.far).add(startPosition);
       // Keyframeを作成
       const positionKF = getPositionKeyframe(
         startPosition,
         endPosition,
         ANIMATION_DURATION
       );
-      console.log(positionKF);
       // Clipを作成
       const moveObjectClip = new AnimationClip(`move-object-${object.id}`, -1, [
         positionKF,
@@ -237,6 +237,7 @@ export default defineComponent({
       container,
       scene,
       onFileInput,
+      objects,
     };
   },
 });

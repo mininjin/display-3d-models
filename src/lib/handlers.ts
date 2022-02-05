@@ -1,4 +1,4 @@
-import { Object3D } from 'three/src/Three';
+import { Object3D } from "three/src/Three";
 import { createSphere, setObjectInitialPosition } from "./createObjects";
 import { PerspectiveCamera, Scene, Mesh } from "three";
 import loader from "@/lib/fileLoader";
@@ -6,7 +6,8 @@ import loader from "@/lib/fileLoader";
 // ファイル入力時のハンドラー
 export const onFileInput = async (
   { target }: Event,
-  scene: Scene,objects:Object3D[]
+  scene: Scene,
+  objects: Object3D[]
 ): Promise<void> => {
   if (target instanceof HTMLInputElement && target.files) {
     // ファイル入力
