@@ -44,6 +44,9 @@ import {
   AnimationClip,
   Clock,
   LoopOnce,
+  Raycaster,
+  Object3D,
+  Intersection,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import {
@@ -69,6 +72,8 @@ export default defineComponent({
     const light = new PointLight();
     const ambientLight = new AmbientLight(AMBIENT_LIGHT_COLOR);
     const controls = new OrbitControls(camera, renderer.domElement);
+    const raycaster = new Raycaster();
+    const objects: Object3D[] = [];
     // 初期化
     const init = () => {
       if (container.value instanceof HTMLElement) {
@@ -111,8 +116,23 @@ export default defineComponent({
             callback: moveObject,
           })
         );
+        // イベントハンドラーの設定
+        window.addEventListener("resize", onResize);
         // 描画
         animate();
+      }
+    };
+
+    // 画面リサイズ時のハンドラー
+    const onResize = () => {
+      if (container.value instanceof HTMLElement) {
+        // サイズの取得
+        const { clientWidth, clientHeight } = container.value;
+        // カメラのアスペクト比を更新
+        camera.aspect = clientWidth / clientHeight;
+        camera.updateProjectionMatrix();
+        // Rendererのサイズ調整
+        renderer.setSize(clientWidth, clientHeight);
       }
     };
 
@@ -136,20 +156,62 @@ export default defineComponent({
       init();
     });
 
+    //
+    const getPositionKeyframe = (
+      startPosition: Vector3,
+      endPosition: Vector3,
+      duration: number
+    ): VectorKeyframeTrack => {
+      // スケジュール
+      const times = [0];
+      // 初期位置
+      const { x, y, z } = startPosition;
+      const values = [x, y, z];
+      // Raycasterの設定
+      raycaster.set(startPosition, endPosition);
+      const intersects = raycaster.intersectObjects(objects, false);
+      if (intersects.length > 0) {
+        //
+        const intersect = intersects[0];
+        //
+        const { distance } = intersect;
+        const rate = distance / startPosition.distanceTo(endPosition);
+        times.push(duration * rate);
+        const intersectPosition = startPosition
+          .clone()
+          .add(
+            endPosition
+              .clone()
+              .add(startPosition.clone().multiplyScalar(-1))
+              .multiplyScalar(rate)
+          );
+        //
+        const { x, y, z } = intersectPosition;
+        values.splice(values.length - 1, 0, x, y, z, x, y, z);
+      } else {
+        //
+        const { x, y, z } = endPosition;
+        values.splice(values.length - 1, 0, x, y, z);
+      }
+      // 終了時刻を設定
+      times.push(duration);
+      return new VectorKeyframeTrack(".position", times, values);
+    };
+
     // アニメーションの作成と起動
     const moveObject = (object: Mesh): void => {
       // アニメーションの始点と終点を計算
       const startPosition = object.position; // 始点
-      const { x, y, z } = startPosition;
       const endPosition = new Vector3(); // 終点
       camera.getWorldDirection(endPosition);
-      endPosition.multiplyScalar(camera.far).add(startPosition); // カメラの向く方向に距離100だけ増加
+      endPosition.multiplyScalar(camera.far).add(startPosition); // カメラの向く方向にカメラの描画距離だけ増加
       // Keyframeを作成
-      const positionKF = new VectorKeyframeTrack(
-        ".position",
-        [0, ANIMATION_DURATION],
-        [x, y, z, endPosition.x, endPosition.y, endPosition.z]
+      const positionKF = getPositionKeyframe(
+        startPosition,
+        endPosition,
+        ANIMATION_DURATION
       );
+      console.log(positionKF);
       // Clipを作成
       const moveObjectClip = new AnimationClip(`move-object-${object.id}`, -1, [
         positionKF,
